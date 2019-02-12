@@ -102,6 +102,8 @@ class Hit(Xplet):
         self.coord_2d: Tuple[float, float] = np.array([self.x, self.y])
         #: The coordinates, i.e. `(x,y,z)`
         self.coord_3d: Tuple[float, float, float] = np.array([self.x, self.y, self.z])
+        #: The coordinates in the phi-eta plane, i.e. `(phi,eta)`
+        self.coord_pe: Tuple[float, float] = np.array([np.arctan2(self.y, self.x), np.log(np.tan(np.arctan2(np.sqrt(self.x**2 + self.y**2), self.z) / 2.))])
 
         # TODO: remove if QallseCs is discarded from the project
         # test: second order conflicts

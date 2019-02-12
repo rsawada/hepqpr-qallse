@@ -7,6 +7,49 @@ from os import path as op
 from hepqpr.qallse.cli.func import *
 from hepqpr.qallse.cli.utils import *
 
+phiSlices = [[-np.pi, +np.pi]]
+etaSlices = [[-10  - 0.05, -2.0  + 0.05],
+             [-2.0 - 0.05, -1.9  + 0.05],
+             [-1.9 - 0.05, -1.8  + 0.05],
+             [-1.8 - 0.05, -1.7  + 0.05],
+             [-1.7 - 0.05, -1.6  + 0.05],
+             [-1.6 - 0.05, -1.5  + 0.05],
+             [-1.5 - 0.05, -1.4  + 0.05],
+             [-1.4 - 0.05, -1.3  + 0.05],
+             [-1.3 - 0.05, -1.2  + 0.05],
+             [-1.2 - 0.05, -1.1  + 0.05],
+             [-1.1 - 0.05, -1.0  + 0.05],
+             [-1.0 - 0.05, -0.9  + 0.05],
+             [-0.9 - 0.05, -0.8  + 0.05],
+             [-0.8 - 0.05, -0.7  + 0.05],
+             [-0.7 - 0.05, -0.6  + 0.05],
+             [-0.6 - 0.05, -0.5  + 0.05],
+             [-0.5 - 0.05, -0.4  + 0.05],
+             [-0.4 - 0.05, -0.3  + 0.05],
+             [-0.3 - 0.05, -0.2  + 0.05],
+             [-0.2 - 0.05, -0.1  + 0.05],
+             [-0.1 - 0.05, -0.0  + 0.05],
+             [+0.0 - 0.05, +0.1  + 0.05],
+             [+0.1 - 0.05, +0.2  + 0.05],
+             [+0.2 - 0.05, +0.3  + 0.05],
+             [+0.3 - 0.05, +0.4  + 0.05],
+             [+0.4 - 0.05, +0.5  + 0.05],
+             [+0.5 - 0.05, +0.6  + 0.05],
+             [+0.6 - 0.05, +0.7  + 0.05],
+             [+0.7 - 0.05, +0.8  + 0.05],
+             [+0.8 - 0.05, +0.9  + 0.05],
+             [+0.9 - 0.05, +1.0  + 0.05],
+             [+1.0 - 0.05, +1.1  + 0.05],
+             [+1.1 - 0.05, +1.2  + 0.05],
+             [+1.2 - 0.05, +1.3  + 0.05],
+             [+1.3 - 0.05, +1.4  + 0.05],
+             [+1.4 - 0.05, +1.5  + 0.05],
+             [+1.5 - 0.05, +1.6  + 0.05],
+             [+1.6 - 0.05, +1.7  + 0.05],
+             [+1.7 - 0.05, +1.8  + 0.05],
+             [+1.8 - 0.05, +1.9  + 0.05],
+             [+1.9 - 0.05, +2.0  + 0.05],
+             [+2.0 - 0.05, +10   + 0.05]]
 
 class GlobalOptions:
     def __init__(self, hits_path, opath=None, prefix=''):
@@ -91,6 +134,38 @@ def cli_build(ctx, add_missing, cls, extra):
     dumper.dump_model(model, ctx.output_path, ctx.prefix, qubo_kwargs=dict(w_marker=None, c_marker=None))
     print('Wrote qubo to', ctx.get_output_path("qubo.pickle"))
 
+@cli.command('buildscan')
+@click.option('--add-missing', is_flag=True, default=False,
+              help='If set, ensure 100% input recall.')
+@click.option('-c', '--cls', default='qallse_d0', metavar='module_name',
+              help='Model to use.')
+@click.option('-e', '--extra', type=str, multiple=True, metavar='key=value',
+              help='Override default model configuration.')
+@click.pass_obj
+def cli_buildscan(ctx, add_missing, cls, extra):
+    '''
+    Generate the QUBO.
+
+    The QUBO and the xplets used by it are saved as pickle files in the current directory
+    (use --output-path and --prefix options to change it).
+
+    <add-missing> will add any true missing doublet to the input, ensuring an input recall of 100%.
+    <cls> lets you choose which model to use: qallse_d0 (default), qallse, qallse_mp, etc.
+    <extra> are key=values corresponding to configuration options of the model, (e.g. -e qubo_conflict_strength=0.5).
+    '''
+    from hepqpr.qallse import dumper
+    extra_config = extra_to_dict(extra)
+    ModelClass = qallse_class_from_string('.' + cls)
+
+    count = 0
+    for phiSlice in phiSlices:
+        for etaSlice in etaSlices:
+            model = ModelClass(ctx.dw, **extra_config)
+            build_model(ctx.path, model, add_missing, [phiSlice[0], phiSlice[1], etaSlice[0], etaSlice[1]])
+            dumper.dump_model(model, ctx.output_path, ctx.prefix, str(count), qubo_kwargs=dict(w_marker=None, c_marker=None))
+            print('Wrote qubo to', ctx.get_output_path('qubo'+str(count)+'.pickle'))
+            count = count + 1
+
 @cli.command('qbsolv')
 @click.option('-q', '--qubo', default=None, metavar='filepath',
               help='Path a the pickled QUBO.')
@@ -170,6 +245,44 @@ def cli_neal(ctx, qubo, seed):
         print(f'Wrote response to {oname}')
 
 
+@cli.command('nealscan',
+             help='Sample a QUBO using neal.')
+@click.option('-s', '--seed', default=None, type=int, metavar='int',
+              help='Seed to use.')
+@click.pass_obj
+def cli_nealscan(ctx, seed):
+    '''
+    Solve a QUBO using neal (!fast!)
+
+    neal (https://github.com/dwavesystems/dwave-neal) is a simulated annealing sampler.
+    It is faster than qbsolv by two order of magnitude with similar (if not better) results.
+    '''
+    count = 0
+    total_final_doublets = []
+    total_final_tracks   = []
+    for phiSlice in phiSlices:
+        for etaSlice in etaSlices:
+            try:
+                print(ctx.get_output_path('qubo'+str(count)+'.pickle'))
+                f = open(ctx.get_output_path('qubo'+str(count)+'.pickle'), 'rb')
+                Q = pickle.load(f)
+            except:
+                print(f'Failed to load QUBO.')
+                sys.exit(-1)
+
+            response = solve_neal(Q, seed=seed)
+            final_doublets, final_tracks = print_stats(ctx.dw, response, Q,
+                                                       [phiSlice[0], phiSlice[1], etaSlice[0], etaSlice[1]])
+            total_final_doublets = unique_merge(total_final_doublets, final_doublets)
+            total_final_tracks   = unique_merge(total_final_tracks,   final_tracks)
+            if ctx.output_path is not None:
+                oname = ctx.get_output_path('neal_response'+str(count)+'.pickle')
+                with open(oname, 'wb') as f: pickle.dump(response, f)
+                print(f'Wrote response to {oname}')
+            count = count + 1
+    print_stats_from_tracks_doublets(ctx.dw, total_final_doublets, total_final_tracks)
+
+
 @cli.command('quickstart',
              context_settings=dict(ignore_unknown_options=True, allow_extra_args=True))
 @click.pass_context
@@ -191,6 +304,36 @@ def cli_quickstart(ctx):
     def _chain():
         ctx.forward(cli_build)
         ctx.invoke(cli_neal)
+
+    if ctx.obj.output_path is None:
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmpdir:
+            ctx.obj.output_path = tmpdir
+            _chain()
+    else:
+        _chain()
+
+@cli.command('scan',
+             context_settings=dict(ignore_unknown_options=True, allow_extra_args=True))
+@click.pass_context
+def cli_scan(ctx):
+    '''
+    Run the whole algorithm (build+neal).
+
+    This accepts the same options as the build command. If no <output-path> is set,
+    a temporary directory is created for the time of the run and deleted on exit.
+
+    Minimal example using a very small dataset:
+
+    \b
+        create_dataset -n 0.01 -p mini
+        qallse -i mini/event000001000-hits.csv scan
+
+    '''
+
+    def _chain():
+        ctx.forward(cli_buildscan)
+        ctx.invoke(cli_nealscan)
 
     if ctx.obj.output_path is None:
         import tempfile
