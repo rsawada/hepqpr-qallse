@@ -110,7 +110,7 @@ def xplets_to_serializable_dict(model):
     return dict(xplets)
 
 
-def dump_qubo(model, output_path=_default_opath, prefix=_default_prefix, **markers):
+def dump_qubo(model, output_path=_default_opath, prefix=_default_prefix, suffix=None, **markers):
     """
     Pickle a QUBO using specific markers. See also :py:meth:`use_markers`. The default filename is
     `qubo.pickle`.
@@ -118,30 +118,32 @@ def dump_qubo(model, output_path=_default_opath, prefix=_default_prefix, **marke
     :param model: an implementation of :py:class:`~hepqpr.qallse.QallseBase`
     :param output_path: the output directory
     :param prefix: a prefix to use in the filename
+    :param suffix: a suffix to use in the filename
     :param markers: see :py:meth:`use_markers`
     :return: the generated QUBO
     """
     with use_markers(model, **markers) as altered_model:
         Q = altered_model.to_qubo()
-        with open(path_join(output_path, prefix + 'qubo.pickle'), 'wb') as f:
+        with open(path_join(output_path, prefix + 'qubo' + suffix + '.pickle'), 'wb') as f:
             pickle.dump(Q, f)
     return Q
 
 def dump_xplets(obj, output_path=_default_opath, prefix=_default_prefix,
-                format='pickle', **lib_kwargs):
+                suffix=None, format='pickle', **lib_kwargs):
     """
     Save the output of :py:meth:`xplets_to_serializable_dict` to disk.
 
     :param obj: the dict of xplet or a Qallse model
     :param output_path: the output directory
     :param prefix: a prefix to use in the filename
+    :param suffix: a suffix to use in the filename
     :param format: either `pickle` or `json`
     :param lib_kwargs: extra arguments to pass to json/pickle.
     """
     if isinstance(obj, QallseBase):
         obj = xplets_to_serializable_dict(obj)
 
-    fname = path_join(output_path, f'{prefix}xplets.{format}')
+    fname = path_join(output_path, f'{prefix}xplets{suffix}.{format}')
     if format == 'pickle':
         with open(fname, 'wb') as f:
             pickle.dump(obj, f, **lib_kwargs)
@@ -153,12 +155,12 @@ def dump_xplets(obj, output_path=_default_opath, prefix=_default_prefix,
 
 
 def dump_model(model, output_path=_default_opath, prefix=_default_prefix,
-               xplets_kwargs=None, qubo_kwargs=None):
+               suffix=None, xplets_kwargs=None, qubo_kwargs=None):
     """
     Calls :py:meth:`dump_qubo` and :py:meth:`dump_xplets`.
     """
     kwargs = qubo_kwargs or dict()
-    Q = dump_qubo(model, output_path, prefix, **kwargs)
+    Q = dump_qubo(model, output_path, prefix, suffix, **kwargs)
     kwargs = xplets_kwargs or dict()
-    dump_xplets(model, output_path, prefix, **kwargs)
+    dump_xplets(model, output_path, prefix, suffix, **kwargs)
     return Q

@@ -223,3 +223,20 @@ def transform_qubo(Q, bias_weight, conflict_strength, bw_marker=10, cs_marker=20
         else:
             Q2[k] = v
     return Q2
+
+# function to get unique values
+def unique_merge(list1, list2):
+
+    # intilize a null list
+    unique_list = []
+
+    # traverse for all elements
+    for x in list1:
+        # check if exists in unique_list or not
+        if x not in unique_list:
+            unique_list.append(x)
+    for x in list2:
+        # check if exists in unique_list or not
+        if x not in unique_list:
+            unique_list.append(x)
+    return unique_list

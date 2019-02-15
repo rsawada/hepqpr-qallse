@@ -78,7 +78,7 @@ class QallseBase(ABC):
         # [ABSTRACT] Return an instance of a subclass of `ConfigBase` holding all model parameters
         pass
 
-    def build_model(self, doublets: Union[pd.DataFrame, List, np.array]):
+    def build_model(self, doublets: Union[pd.DataFrame, List, np.array], region_of_interest=None):
         """
         Do the preprocessing, i.e. prepare everything so the QUBO can be generated.
         This includes creating the structures (hits, doublets, triplets, quadruplets) and computing the weights.
@@ -91,7 +91,7 @@ class QallseBase(ABC):
 
         initial_doublets = doublets.values if isinstance(doublets, pd.DataFrame) else doublets
 
-        self._create_doublets(initial_doublets)
+        self._create_doublets(initial_doublets, region_of_interest)
         self._create_triplets()
         self._create_quadruplets()
 
@@ -152,19 +152,42 @@ class QallseBase(ABC):
 
     # ---------------------------------------------
 
-    def _create_doublets(self, initial_doublets):
+    def _create_doublets(self, initial_doublets, region_of_interest=None):
         # Generate Doublet structures from the initial doublets, calling _is_invalid_doublet to apply early cuts
         doublets = []
         for (start_id, end_id) in initial_doublets:
             start, end = self.hits[start_id], self.hits[end_id]
             d = Doublet(start, end)
-            if not self._is_invalid_doublet(d):
+
+            if not self._is_invalid_doublet(d) and self._is_inROI_doublet(d, region_of_interest):
                 start.outer.append(d)
                 end.inner.append(d)
                 doublets.append(d)
 
         self.logger.info(f'created {len(doublets)} doublets.')
         self.doublets = doublets
+
+    def _is_inROI_doublet(self, dblet: Doublet, region_of_interest=None) -> bool:
+        if region_of_interest == None:
+            return True
+        inROI = False
+        phiRangeMin = region_of_interest[0]
+        phiRangeMax = region_of_interest[1]
+        etaRangeMin = region_of_interest[2]
+        etaRangeMax = region_of_interest[3]
+        phi = dblet.h1.coord_pe[0]
+        eta = dblet.h1.coord_pe[1]
+        inROI = (phiRangeMin < phi < phiRangeMax) and (etaRangeMin < eta < etaRangeMax)
+        if inROI == True:
+            return True
+
+        phi = dblet.h2.coord_pe[0]
+        eta = dblet.h2.coord_pe[1]
+        inROI = (phiRangeMin < phi < phiRangeMax) and (etaRangeMin < eta < etaRangeMax)
+        if inROI == True:
+            return True
+        return False
+
 
     @abstractmethod
     def _is_invalid_doublet(self, dblet: Doublet) -> bool:

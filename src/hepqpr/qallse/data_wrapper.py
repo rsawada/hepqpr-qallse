@@ -106,7 +106,7 @@ class DataWrapper:
         missing, fakes, real = diff_rows(self._doublets, doublets_found)
         return len(real), len(fakes), len(missing)
 
-    def compute_score(self, doublets: Union[List, np.array, pd.DataFrame]) -> [float, float, List[List]]:
+    def compute_score(self, doublets: Union[List, np.array, pd.DataFrame], region_of_interest=None) -> [float, float, List[List]]:
         """
         Precision and recall are defined as follow:
         * precision (purity): how many doublets are correct ? `len(real ∈ doublets) / len(doublets)`
@@ -118,8 +118,37 @@ class DataWrapper:
         if isinstance(doublets, pd.DataFrame): doublets = doublets.values
         doublets_found, _, unfocused_found = diff_rows(doublets, self._unfocused)
         missing, fakes, real = diff_rows(self._doublets, doublets_found)
-        return len(real) / len(doublets_found), \
-               len(real) / len(self._doublets), \
+
+        if region_of_interest == None:
+            n_doublets_in_RoI = len(self._doublets)
+        else:
+            n_doublets_in_RoI = 0
+            phiRangeMin = region_of_interest[0]
+            phiRangeMax = region_of_interest[1]
+            etaRangeMin = region_of_interest[2]
+            etaRangeMax = region_of_interest[3]
+            for dblet in self._doublets:
+                inRoI = False
+                hit = self.hits[self.hits['hit_id'] == dblet[0]]
+                x = float(hit.x)
+                y = float(hit.y)
+                z = float(hit.z)
+                phi = np.arctan2(y, x) # [-pi, pi]
+                eta = np.log(np.tan(np.arctan2(np.sqrt(x**2 + y**2), z) / 2.))
+                inROI = (phiRangeMin < phi < phiRangeMax) and (etaRangeMin < eta < etaRangeMax)
+                if inROI == False:
+                    hit = self.hits[self.hits['hit_id'] == dblet[1]]
+                    x = float(hit.x)
+                    y = float(hit.y)
+                    z = float(hit.z)
+                    phi = np.arctan2(y, x) # [-pi, pi]
+                    eta = np.log(np.tan(np.arctan2(np.sqrt(x**2 + y**2), z) / 2.))
+                    inROI = (phiRangeMin < phi < phiRangeMax) and (etaRangeMin < eta < etaRangeMax)
+                if inROI == True:
+                    n_doublets_in_RoI = n_doublets_in_RoI + 1
+
+        return (len(real) / len(doublets_found)) if len(doublets_found) else 0, \
+               (len(real) / n_doublets_in_RoI)   if n_doublets_in_RoI   else 0, \
                missing
 
     def add_missing_doublets(self, doublets: Union[np.array, pd.DataFrame]) -> pd.DataFrame:
@@ -143,7 +172,7 @@ class DataWrapper:
             print(f'    New precision (%): {p * 100:.4f}')
             return ret
 
-    def compute_trackml_score(self, final_tracks: List[TXplet], submission=None) -> float:
+    def compute_trackml_score(self, final_tracks: List[TXplet], submission=None, region_of_interest=None) -> float:
         """
         :param final_tracks: a list of xplets representing tracks
         :param submission: (optional) a TrackML submission, see :py:meth:~`create_submission`

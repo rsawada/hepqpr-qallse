@@ -35,19 +35,21 @@ def time_this():
 
 # ======= model building
 
-def build_model(path, model, add_missing):
-    doublets = pd.read_csv(path + '-doublets.csv')
+def build_model(path, model, add_missing, region_of_interest):
+    if 'doublets' not in build_model.__dict__:
+        doublets = pd.read_csv(path + '-doublets.csv')
 
-    # prepare doublets
-    if add_missing:
-        print('Cheat on, adding missing doublets.')
-        doublets = model.dataw.add_missing_doublets(doublets)
-    else:
-        p, r, ms = model.dataw.compute_score(doublets)
-        print(f'INPUT -- precision (%): {p * 100:.4f}, recall (%): {r * 100:.4f}, missing: {len(ms)}')
+        # prepare doublets
+        if add_missing:
+            print('Cheat on, adding missing doublets.')
+            doublets = model.dataw.add_missing_doublets(doublets)
+        else:
+            p, r, ms = model.dataw.compute_score(doublets)
+            print(f'INPUT -- precision (%): {p * 100:.4f}, recall (%): {r * 100:.4f}, missing: {len(ms)}')
+        doublets_read = True
 
     # build the qubo
-    model.build_model(doublets=doublets)
+    model.build_model(doublets=doublets, region_of_interest=region_of_interest)
 
 
 # ======= sampling
@@ -112,7 +114,7 @@ def process_response(response):
     return final_doublets, final_tracks
 
 
-def print_stats(dw, response, Q=None):
+def print_stats(dw, response, Q=None, region_of_interest=None):
     final_doublets, final_tracks = process_response(response)
 
     en0 = 0 if Q is None else dw.compute_energy(Q)
@@ -121,9 +123,15 @@ def print_stats(dw, response, Q=None):
     occs = response.record.num_occurrences
     print(f'          best sample occurrence: {occs[0]}/{occs.sum()}')
 
-    p, r, ms = dw.compute_score(final_doublets)
+    p, r, ms = dw.compute_score(final_doublets, region_of_interest)
     print(f'SCORE  -- precision (%): {p * 100}, recall (%): {r * 100}, missing: {len(ms)}')
     trackml_score = dw.compute_trackml_score(final_tracks)
     print(f'          tracks found: {len(final_tracks)}, trackml score (%): {trackml_score * 100}')
 
     return final_doublets, final_tracks
+
+def print_stats_from_tracks_doublets(dw, final_doublets, final_tracks, region_of_interest=None):
+    p, r, ms = dw.compute_score(final_doublets, region_of_interest)
+    print(f'SCORE  -- precision (%): {p * 100}, recall (%): {r * 100}, missing: {len(ms)}')
+    trackml_score = dw.compute_trackml_score(final_tracks)
+    print(f'          tracks found: {len(final_tracks)}, trackml score (%): {trackml_score * 100}')
