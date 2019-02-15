@@ -2,6 +2,7 @@
 from .qallse import Qallse
 from .qallse_mp import QallseMp
 from .qallse_d0 import QallseD0
+from .qallse_doublet import QallseDoublet
 
 # other
 from .data_structures import *
