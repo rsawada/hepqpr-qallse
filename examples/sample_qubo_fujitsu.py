@@ -113,8 +113,9 @@ class FujitsuSampler:
 
 loglevel = logging.DEBUG
 
-input_path = '../mini1/event000001000-hits.csv'  # TODO change it !
-qubo_path = '../mini1'  # TODO change it
+input_path = '../mini_0.05/event000001000-hits.csv'  # TODO change it !
+qubo_path  = '../mini_0.05'                          # TODO change it !
+oname      = '../mini_0.05/fujitsu_response.pickle'  # TODO change it !
 
 sampler = FujitsuSampler()
 
@@ -155,3 +156,7 @@ print(f'          best sample occurrence: {occs[0]}/{occs.sum()}')
 
 print(f'SCORE  -- precision (%): {p * 100}, recall (%): {r * 100}, missing: {len(ms)}')
 print(f'          tracks found: {len(final_tracks)}, trackml score (%): {trackml_score * 100}')
+
+# write response
+with open(oname, 'wb') as f: pickle.dump(response, f)
+print(f'Wrote response to {oname}')

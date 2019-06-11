@@ -47,6 +47,7 @@ I am available for any question (email or Github issue is fine) and would be gla
     + [Quickstart](#quickstart)
     + [Commandline tools](#commandline-tools)
     + [Solving QUBOs with qbsolv and D-Wave](#solving-qubos-with-qbsolv-and-d-wave)
+    + [Solving QUBOs with Fujitsu](#solving-qubos-with-fujitsu)
     + [API](#api)
     + [Running from an IPython notebook](#running-from-an-ipython-notebook)
   * [Plotting](#plotting)
@@ -198,6 +199,18 @@ Then, simply use the `-dw` option and that's it ! The sub-QUBOs are now solved o
 qallse -i /tmp/mini/ds05/event000001000-hits.csv -o /tmp/mini qbsolv \
     -dw /path/to/dwave.conf
 ```
+
+### Solving QUBOs with Fujitsu
+
+First, you need to preapre a dataset using create_dataset, then need to create a command like,
+> qallse -i /tmp/mini/ds05/event000001000-hits.csv -o /tmp/mini build
+Then, edit examples/sample_qubo_fujitsu.py to set pathes to ????hits.csv and qubo.pickle.
+You also need to set the API key and the url.
+You may also adust other parameters (e.g. number_iterations).
+Then run the script,
+> cd examples
+> python sample_qubo_fujitsu.py
+> qallse -i ../mini_0.05/event000001000-hits.csv -o ../mini_0.05/ plot -r ../mini_0.05/neal_response.pickle 
 
 ### API
 
