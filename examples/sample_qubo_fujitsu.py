@@ -14,6 +14,7 @@ import pickle
 import dimod
 import json
 import os
+import tempfile
 from os.path import join as path_join
 
 from hepqpr.qallse import *
@@ -62,10 +63,15 @@ class FujitsuSampler:
         qubo_request['binary_polynomial']   = binary_polynomial
         qubo_request['fujitsuDAPT']        = fujitsuDAPT;
 
-        command = "curl -H 'X-DA-Access-Key:APIKEY' -H 'Accept:application/json' -H 'Content-type:application/json' -X POST -d '" + \
-                  json.dumps(qubo_request) + \
-                  "' URL/v1/qubo/solve"
-        ret = os.popen(command).read()
+        tmpfile = tempfile.NamedTemporaryFile(mode='w+t')
+        json.dump(qubo_request, tmpfile)
+        tmpfile.flush()
+        command = "curl -H 'X-DA-Access-Key:APIKEY' -H 'Accept:application/json' -H 'Content-type:application/json' -X POST -d @" + \
+                  tmpfile.name + " URL/v1/qubo/solve"
+        try:
+            ret = os.popen(command).read()
+        finally:
+            tmpfile.close()
         json_data = json.loads(ret)
 
         # Print result
