@@ -47,7 +47,7 @@ class FujitsuSampler:
         for k, v in Q.items():
             term = {}
             term['coefficient'] = v
-            term['polynomials'] = [dlets[k[0]], dlets[k[1]]] if k[0] == k[1] else [dlets[k[0]]]
+            term['polynomials'] = [dlets[k[0]], dlets[k[1]]] if k[0] != k[1] else [dlets[k[0]]]
             terms.append(term)
         binary_polynomial['terms'] = terms
 
