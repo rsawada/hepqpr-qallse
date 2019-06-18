@@ -15,6 +15,7 @@ import dimod
 import json
 import os
 import tempfile
+import time
 from os.path import join as path_join
 
 from hepqpr.qallse import *
@@ -45,34 +46,60 @@ class FujitsuSampler:
         binary_polynomial = {}
         terms = []
 
+        solver = 'fujitsuDA' # 'fujitsuDAPT' or 'fujitsuDA'
+
         for k, v in Q.items():
             term = {}
-            term['coefficient'] = v
+            term['coefficient'] = int(32000*v) if solver == 'fujitsuDA' else v
             term['polynomials'] = [dlets[k[0]], dlets[k[1]]] if k[0] != k[1] else [dlets[k[0]]]
             terms.append(term)
         binary_polynomial['terms'] = terms
 
-        fujitsuDAPT = {'number_iterations'    : 1000000,
-                       'number_replicas'      : 100,
-                       'offset_increase_rate' : 1000,
-                       'solution_mode'        : 'COMPLETE'}
+        if solver == 'fujitsuDAPT':
+            params = {'number_iterations'    : 10000,
+                      'number_replicas'      : 20,
+                      'offset_increase_rate' : 1000,
+                      'solution_mode'        : 'COMPLETE'}
+        else:
+            params = {'expert_mode'          : True,
+                      'noise_model'          : 'METROPOLIS', # 'GIBBS'
+                      'number_iterations'    : 10000,
+                      'number_runs'          : 20,
+                      'offset_increase_rate' : 1000,
+                      'temperature_decay'    : 0.001,
+                      'temperature_interval' : 100,
+                      'temperature_mode'     : 'EXPONENTIAL',
+                      'temperature_start'    : 5000,
+                      'solution_mode'        : 'COMPLETE'}
+
         guidance_config = {}
         for v in dlets.values():
-            guidance_config[v] = False
-        fujitsuDAPT['guidance_config'] = guidance_config
-        qubo_request['binary_polynomial']   = binary_polynomial
-        qubo_request['fujitsuDAPT']        = fujitsuDAPT;
+            guidance_config[v] = False # True
+        params['guidance_config']         = guidance_config
+        qubo_request['binary_polynomial'] = binary_polynomial
+        qubo_request[solver]              = params;
 
         tmpfile = tempfile.NamedTemporaryFile(mode='w+t')
         json.dump(qubo_request, tmpfile)
         tmpfile.flush()
         command = "curl -H 'X-DA-Access-Key:APIKEY' -H 'Accept:application/json' -H 'Content-type:application/json' -X POST -d @" + \
                   tmpfile.name + " URL/v1/qubo/solve"
+        anneal_start = time.time()
         try:
             ret = os.popen(command).read()
         finally:
             tmpfile.close()
+        anneal_end = time.time()
         json_data = json.loads(ret)
+        if json_data.get('qubo_solution') == None:
+            print('Error')
+            print(ret)
+            return None
+
+        print('Time measurend on this PC')
+        print('Start     ', anneal_start)
+        print('End       ', anneal_end)
+        print('End-Start ', anneal_end - anneal_start)
 
         # Print result
         qubo_solution = json_data['qubo_solution']
@@ -86,7 +113,7 @@ class FujitsuSampler:
         print('queue_time: %s '         % timing['queue_time'])
         print('solve_time: %s '         % timing['solve_time'])
         print('total_elapsed_time: %s ' % timing['total_elapsed_time'])
-        print('aneeal_time: %s '        % timing['detailed']['anneal_time'])
+        print('anneal_time: %s '        % timing['detailed']['anneal_time'])
 
         samples = []
         energies = []
@@ -137,6 +164,8 @@ with open(path_join(qubo_path, 'qubo.pickle'), 'rb') as f:
 
 # sample qubo
 response = sampler.sample_qubo(Q)
+if response == None:
+    quit()
 
 # get the results
 all_doublets = Qallse.process_sample(next(response.samples()))
