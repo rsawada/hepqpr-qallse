@@ -46,7 +46,7 @@ class FujitsuSampler:
         binary_polynomial = {}
         terms = []
 
-        solver = 'fujitsuDA' # 'fujitsuDAPT' or 'fujitsuDA'
+        solver = 'fujitsuDAPT' # 'fujitsuDAPT' or 'fujitsuDA'
 
         for k, v in Q.items():
             term = {}
