@@ -46,7 +46,7 @@ class FujitsuSampler:
         binary_polynomial = {}
         terms = []
 
-        solver = 'fujitsuDAPT' # 'fujitsuDAPT' or 'fujitsuDA'
+        solver = 'fujitsuDAPT' # 'fujitsuDAPT', 'fujitsuDA' or 'fujitsuDAMixedMode'
 
         for k, v in Q.items():
             term = {}
@@ -60,9 +60,19 @@ class FujitsuSampler:
                       'number_replicas'      : 20,
                       'offset_increase_rate' : 1000,
                       'solution_mode'        : 'COMPLETE'}
-        else:
+        elif solver == 'fujitsuDA':
             params = {'expert_mode'          : True,
                       'noise_model'          : 'METROPOLIS', # 'GIBBS'
+                      'number_iterations'    : 10000,
+                      'number_runs'          : 20,
+                      'offset_increase_rate' : 1000,
+                      'temperature_decay'    : 0.001,
+                      'temperature_interval' : 100,
+                      'temperature_mode'     : 'EXPONENTIAL',
+                      'temperature_start'    : 5000,
+                      'solution_mode'        : 'COMPLETE'}
+        else: # fujitsuDAMixedMode
+            params = {'noise_model'          : 'METROPOLIS', # 'GIBBS'
                       'number_iterations'    : 10000,
                       'number_runs'          : 20,
                       'offset_increase_rate' : 1000,
